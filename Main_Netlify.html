@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ticker vs VIX — CSV + Charts (Netlify)</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+      :root { color-scheme: dark; }
+      body { background:#0f1115; color:#e5e7eb; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, Helvetica, "Apple Color Emoji", "Segoe UI Emoji"; margin:0; }
+      .container { max-width: 980px; margin: 0 auto; padding: 24px; }
+      h2 { margin: 0 0 14px; font-size: 22px; }
+      .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+      input[type=date] { padding: 8px 10px; background:#111827; color:#e5e7eb; border:1px solid #374151; border-radius:6px; }
+      button { padding: 8px 12px; background:#2563eb; color:#fff; border:0; border-radius:6px; cursor:pointer; }
+      button.secondary { background:#374151; }
+      button:disabled { opacity: .55; cursor: not-allowed; }
+      .symbols { display:flex; gap:14px; flex-wrap: wrap; margin: 8px 0 2px; }
+      .note { color:#9ca3af; margin-top:8px; font-size:.95em; }
+      #msg { margin-top: 12px; white-space: pre-wrap; }
+      #results { margin-top: 10px; }
+      #results a { color:#93c5fd; text-decoration: none; }
+      #charts { margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+      .chart { width: 100%; height: 460px; border:1px solid #374151; border-radius: 8px; background:#0b0d13; }
+      code { background:#111827; color:#d1d5db; padding:2px 6px; border-radius:4px; }
+    </style>
+  </head>
+  <body>
+    <main class="container">
+      <h2>Ticker vs VIX — CSV + Charts</h2>
+      <div class="row">
+        <label for="date">Date (ET)</label>
+        <input type="date" id="date" />
+        <button id="genBtn" type="button">Generate</button>
+        <button id="saveAllBtn" class="secondary" type="button" disabled>Download All CSVs</button>
+      </div>
+      <div class="symbols">
+        <label><input id="all" type="checkbox" checked /> Select all</label>
+        <label><input type="checkbox" class="sym" value="ES" checked /> ES</label>
+        <label><input type="checkbox" class="sym" value="MES" checked /> MES</label>
+        <label><input type="checkbox" class="sym" value="NQ" checked /> NQ</label>
+        <label><input type="checkbox" class="sym" value="MNQ" checked /> MNQ</label>
+      </div>
+      <p class="note">Note: Yahoo limits 1‑minute intraday history to ~25 days. For older dates, the app automatically switches to 5‑minute data. Session window: 09:30–16:15 ET. Only completed trading days are allowed.</p>
+      <p id="hint" class="note" style="display:none"></p>
+      <div id="msg"></div>
+      <div id="results"></div>
+      <div id="charts"></div>
+    </main>
+
+    <script src="app-netlify.js"></script>
+  </body>
+ </html>
+
+
