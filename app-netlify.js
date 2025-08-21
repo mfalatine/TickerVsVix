@@ -79,8 +79,7 @@
 
   function renderChart(divId, ts, es, vix, label){
     if (!PLOTLY_LOADED) return;
-    const [es0, es1] = paddedRange(Math.min(...es), Math.max(...es));
-    const [vx0, vx1] = paddedRange(Math.min(...vix), Math.max(...vix));
+    // Autorange by letting Plotly compute ranges
     Plotly.newPlot(divId, [
       { x: ts, y: vix, mode:'lines', name:'vix_close', line:{ color:'#f59e0b', width:2 } },
       { x: ts, y: es,  mode:'lines', name:'es_close',  yaxis:'y2', line:{ color:'#60a5fa', width:2 } },
@@ -89,8 +88,8 @@
       margin:{ t:32, r:40, l:50, b:40 },
       paper_bgcolor:'#0b0d13', plot_bgcolor:'#0b0d13', font:{ color:'#e5e7eb' },
       xaxis:{ title:'Time', rangeslider:{ visible:true } },
-      yaxis:{ title:'VIX', range:[vx0,vx1] },
-      yaxis2:{ title:label, overlaying:'y', side:'right', range:[es0,es1] },
+      yaxis:{ title:'VIX', autorange:true },
+      yaxis2:{ title:label, overlaying:'y', side:'right', autorange:true },
       legend:{ orientation:'h', y:1.02, yanchor:'bottom', x:0.01 }
     }, { displaylogo:false, responsive:true });
   }
@@ -120,6 +119,13 @@
           }
         }
 
+        // Filter invalid, non-finite values to avoid flat lines / autorange issues
+        const pairs = alignedTs.map((t,i)=>({ t, es: esVals[i], v: vixVals[i] }))
+          .filter(p => Number.isFinite(p.es) && Number.isFinite(p.v));
+        const tsClean = pairs.map(p=>p.t);
+        const esClean = pairs.map(p=>p.es);
+        const vixClean = pairs.map(p=>p.v);
+
         // CSV rows
         const fmt = (d)=>{
           const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
@@ -127,9 +133,9 @@
           return `${y}-${m}-${da} ${hh}:${mm}`;
         };
         const rows = [[ 'timestamp_et','es_close','vix_close' ]];
-        for (let i=0;i<alignedTs.length;i++) rows.push([ fmt(alignedTs[i]), esVals[i], vixVals[i] ]);
+        for (let i=0;i<tsClean.length;i++) rows.push([ fmt(tsClean[i]), esClean[i], vixClean[i] ]);
         const fname = `${label.toLowerCase()}_vix_1min_${dateISO}_0930_1615_ET.csv`;
-        outputs.push({ label, filename: fname, rows, ts: alignedTs, es: esVals, vix: vixVals });
+        outputs.push({ label, filename: fname, rows, ts: tsClean, es: esClean, vix: vixClean });
       }
 
       // Results links + charts
