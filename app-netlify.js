@@ -79,13 +79,15 @@
   }
 
   async function fetchYahoo(symbol, targetISO){
-    // Always fetch the selected ET session window 09:30–16:15
-    const p1 = epochSecondsForET(targetISO, '09:30');
-    const p2 = epochSecondsForET(targetISO, '16:15');
-    // Choose interval based on age
+    // Fetch exactly the selected ET session window 09:30–16:15 using period1/period2
     const today = new Date();
     const diffDays = Math.floor((today - new Date(targetISO + 'T00:00:00Z'))/(1000*60*60*24));
     const interval = diffDays <= 25 ? '1m' : '5m';
+    const p1 = epochSecondsForET(targetISO, '09:30');
+    const p2 = epochSecondsForET(targetISO, '16:15');
+    if (!(Number.isFinite(p1) && Number.isFinite(p2) && p2 > p1)) {
+      throw new Error('Failed to compute ET session window');
+    }
     const url = new URL(functionsBase() + '/fetch_chart');
     url.searchParams.set('symbol', symbol);
     url.searchParams.set('interval', interval);
@@ -155,9 +157,19 @@
           }
         }
 
-        // Filter invalid, non-finite values to avoid flat lines / autorange issues
+        // Filter to exact selected ET date and session 09:30–16:15, and remove invalid values
+        function etParts(dUtc){
+          return new Intl.DateTimeFormat('en-US', { timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false })
+            .formatToParts(dUtc).reduce((a,p)=>{ a[p.type]=p.value; return a; }, {});
+        }
+        function isSelectedSession(dUtc){
+          const p = etParts(dUtc);
+          const d = `${p.year}-${p.month}-${p.day}`;
+          const hm = `${p.hour}:${p.minute}`;
+          return d === dateISO && hm >= '09:30' && hm <= '16:15';
+        }
         const pairs = alignedTs.map((t,i)=>({ t, es: esVals[i], v: vixVals[i] }))
-          .filter(p => Number.isFinite(p.es) && Number.isFinite(p.v));
+          .filter(p => Number.isFinite(p.es) && Number.isFinite(p.v) && isSelectedSession(p.t));
         const tsClean = pairs.map(p=>p.t);
         const esClean = pairs.map(p=>p.es);
         const vixClean = pairs.map(p=>p.v);
