@@ -104,8 +104,8 @@
       title: `${label} vs VIX`,
       margin:{ t:32, r:40, l:50, b:40 },
       paper_bgcolor:'#0b0d13', plot_bgcolor:'#0b0d13', font:{ color:'#e5e7eb' },
-      xaxis:{ title:'Time', rangeslider:{ visible:true } },
-      yaxis:{ title:'VIX', autorange:true },
+      xaxis:{ title:'Time', rangeslider:{ visible:true }, showgrid:true, gridcolor:'#2a2f3a', gridwidth:1, zeroline:false, linecolor:'#4b5563', tickcolor:'#4b5563' },
+      yaxis:{ title:'VIX', autorange:true, showgrid:true, gridcolor:'#2a2f3a', gridwidth:1, zeroline:false, linecolor:'#4b5563', tickcolor:'#4b5563' },
       yaxis2:{ title:label, overlaying:'y', side:'right', autorange:true },
       legend:{ orientation:'h', y:1.02, yanchor:'bottom', x:0.01 }
     }, { displaylogo:false, responsive:true });
