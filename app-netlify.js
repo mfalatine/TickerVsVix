@@ -16,6 +16,23 @@
   function setDefaultDate(){ dateEl.value = todayISO(); }
   setDefaultDate();
 
+  function nowETParts(){
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', year:'numeric', month:'2-digit', day:'2-digit',
+      hour:'2-digit', minute:'2-digit', hour12:false
+    }).formatToParts(new Date());
+    return parts.reduce((acc,p)=>{ acc[p.type]=p.value; return acc; }, {});
+  }
+
+  function validateCompletedETDay(dateISO){
+    const p = nowETParts();
+    const todayET = `${p.year}-${p.month}-${p.day}`;
+    const minutesET = (parseInt(p.hour,10) * 60) + parseInt(p.minute,10);
+    if (dateISO > todayET) return 'Selected date is in the future. Choose a completed trading day.';
+    if (dateISO === todayET && minutesET < (16*60 + 15)) return "Today's session is not complete (closes 16:15 ET). Pick a prior date or try again after close.";
+    return '';
+  }
+
   function symBoxes(){ return Array.prototype.slice.call(document.querySelectorAll('.sym')); }
   allBox.addEventListener('change', function(){ symBoxes().forEach(b=>b.checked = allBox.checked); });
 
@@ -96,6 +113,8 @@
 
   async function generate(){
     const dateISO = dateEl.value || todayISO();
+    const validationError = validateCompletedETDay(dateISO);
+    if (validationError){ msgEl.textContent = validationError; return; }
     const labels = symBoxes().filter(x=>x.checked).map(x=>x.value);
     msgEl.textContent = 'Working…'; resultsEl.textContent=''; chartsEl.innerHTML='';
     const outputs = [];
