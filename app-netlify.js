@@ -117,8 +117,8 @@
     if (!PLOTLY_LOADED) return;
     // Autorange by letting Plotly compute ranges
     Plotly.newPlot(divId, [
-      { x: ts, y: vix, mode:'lines', name:'vix_close', line:{ color:'#f59e0b', width:2 } },
-      { x: ts, y: es,  mode:'lines', name:'es_close',  yaxis:'y2', line:{ color:'#60a5fa', width:2 } },
+      { x: ts, y: vix, mode:'lines', name:'VIX close', line:{ color:'#f59e0b', width:2 } },
+      { x: ts, y: es,  mode:'lines', name:`${label} close`,  yaxis:'y2', line:{ color:'#60a5fa', width:2 } },
     ], {
       title: `${label} vs VIX`,
       margin:{ t:32, r:40, l:50, b:40 },
