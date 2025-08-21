@@ -54,30 +54,34 @@
     return `${location.origin}/.netlify/functions`;
   }
 
-  function etOffsetParts(dateISO){
-    // Returns { sign: '+/-', hh: 'HH', mm: 'MM', minutesEast: number } for America/New_York on given date
-    const parts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York', timeZoneName: 'shortOffset', year:'numeric', month:'2-digit', day:'2-digit'
-    }).formatToParts(new Date(dateISO+'T12:00:00Z'));
-    const tz = parts.find(p=>p.type==='timeZoneName')?.value || 'GMT-04:00';
-    // tz like 'GMT-4' or 'GMT-04:00'
-    let m = tz.replace('GMT','');
-    if (!m.includes(':')) m = (m.length ? m+':00' : '+00:00');
-    const sign = m.startsWith('-')? '-' : '+';
-    const [hh,mm] = m.replace('+','').replace('-','').split(':');
-    const minutesEast = (sign==='-'? -1:1) * (parseInt(hh,10)*60 + parseInt(mm,10));
-    return { sign, hh, mm, minutesEast };
+  function parseGmtOffsetToMinutes(gmt){
+    // gmt like 'GMT-4' or 'GMT-04:00'
+    let s = String(gmt || 'GMT-04:00').replace('GMT','');
+    if (!s.includes(':')) s = (s.length ? s+':00' : '+00:00');
+    const sign = s.startsWith('-')? -1 : 1;
+    const [hh,mm] = s.replace('+','').replace('-','').split(':');
+    return sign * (parseInt(hh,10)*60 + parseInt(mm,10));
   }
 
-  function etOffsetString(dateISO){
-    const p = etOffsetParts(dateISO); return `${p.sign}${p.hh}:${p.mm}`;
+  function etOffsetMinutes(dateISO){
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone:'America/New_York', timeZoneName:'shortOffset', year:'numeric', month:'2-digit', day:'2-digit' })
+      .formatToParts(new Date(dateISO+'T12:00:00Z'));
+    const tz = parts.find(p=>p.type==='timeZoneName')?.value || 'GMT-04:00';
+    return parseGmtOffsetToMinutes(tz);
+  }
+
+  function epochSecondsForET(dateISO, hm){
+    // hm 'HH:MM' ET → epoch seconds UTC
+    const [H,M] = hm.split(':').map(n=>parseInt(n,10));
+    const offMin = etOffsetMinutes(dateISO); // minutes east of UTC (negative for -04:00)
+    const ms = Date.UTC(parseInt(dateISO.slice(0,4),10), parseInt(dateISO.slice(5,7),10)-1, parseInt(dateISO.slice(8,10),10), H, M) - (offMin*60*1000);
+    return Math.floor(ms/1000);
   }
 
   async function fetchYahoo(symbol, targetISO){
     // Always fetch the selected ET session window 09:30–16:15
-    const off = etOffsetString(targetISO); // e.g., -04:00 or -05:00
-    const start = new Date(`${targetISO}T09:30:00${off}`);
-    const end   = new Date(`${targetISO}T16:15:00${off}`);
+    const p1 = epochSecondsForET(targetISO, '09:30');
+    const p2 = epochSecondsForET(targetISO, '16:15');
     // Choose interval based on age
     const today = new Date();
     const diffDays = Math.floor((today - new Date(targetISO + 'T00:00:00Z'))/(1000*60*60*24));
@@ -85,8 +89,8 @@
     const url = new URL(functionsBase() + '/fetch_chart');
     url.searchParams.set('symbol', symbol);
     url.searchParams.set('interval', interval);
-    url.searchParams.set('period1', String(Math.floor(start.getTime()/1000)));
-    url.searchParams.set('period2', String(Math.floor(end.getTime()/1000)));
+    url.searchParams.set('period1', String(p1));
+    url.searchParams.set('period2', String(p2));
     url.searchParams.set('includePrePost', 'false');
     const r = await fetch(url.toString(), { cache:'no-store' });
     if (!r.ok) throw new Error(await r.text());
@@ -160,7 +164,7 @@
 
         // Shift timestamps so axis displays ET regardless of user's local timezone
         const localOffsetEast = -new Date().getTimezoneOffset();
-        const etEast = etOffsetParts(dateISO).minutesEast; // negative for -04:00
+        const etEast = etOffsetMinutes(dateISO); // negative for -04:00
         const deltaMin = localOffsetEast - etEast; // add delta to display ET clock locally
         const tsDisplay = tsClean.map(d => new Date(+d + deltaMin*60000));
 
