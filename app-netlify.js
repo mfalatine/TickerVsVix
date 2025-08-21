@@ -54,27 +54,40 @@
     return `${location.origin}/.netlify/functions`;
   }
 
+  function etOffsetParts(dateISO){
+    // Returns { sign: '+/-', hh: 'HH', mm: 'MM', minutesEast: number } for America/New_York on given date
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York', timeZoneName: 'shortOffset', year:'numeric', month:'2-digit', day:'2-digit'
+    }).formatToParts(new Date(dateISO+'T12:00:00Z'));
+    const tz = parts.find(p=>p.type==='timeZoneName')?.value || 'GMT-04:00';
+    // tz like 'GMT-4' or 'GMT-04:00'
+    let m = tz.replace('GMT','');
+    if (!m.includes(':')) m = (m.length ? m+':00' : '+00:00');
+    const sign = m.startsWith('-')? '-' : '+';
+    const [hh,mm] = m.replace('+','').replace('-','').split(':');
+    const minutesEast = (sign==='-'? -1:1) * (parseInt(hh,10)*60 + parseInt(mm,10));
+    return { sign, hh, mm, minutesEast };
+  }
+
+  function etOffsetString(dateISO){
+    const p = etOffsetParts(dateISO); return `${p.sign}${p.hh}:${p.mm}`;
+  }
+
   async function fetchYahoo(symbol, targetISO){
-    // If target is within ~25d, use range=1d; else compute period1/2 for a full day
-    const target = new Date(targetISO + 'T00:00:00');
+    // Always fetch the selected ET session window 09:30–16:15
+    const off = etOffsetString(targetISO); // e.g., -04:00 or -05:00
+    const start = new Date(`${targetISO}T09:30:00${off}`);
+    const end   = new Date(`${targetISO}T16:15:00${off}`);
+    // Choose interval based on age
     const today = new Date();
-    const diffDays = Math.floor((today - target) / (1000*60*60*24));
+    const diffDays = Math.floor((today - new Date(targetISO + 'T00:00:00Z'))/(1000*60*60*24));
     const interval = diffDays <= 25 ? '1m' : '5m';
     const url = new URL(functionsBase() + '/fetch_chart');
-    if (diffDays <= 25){
-      url.searchParams.set('symbol', symbol);
-      url.searchParams.set('interval', interval);
-      url.searchParams.set('range', '1d');
-      url.searchParams.set('includePrePost', 'false');
-    } else {
-      const start = new Date(targetISO + 'T00:00:00Z');
-      const end = new Date(start.getTime() + 86400*1000);
-      url.searchParams.set('symbol', symbol);
-      url.searchParams.set('interval', interval);
-      url.searchParams.set('period1', String(Math.floor(start.getTime()/1000)));
-      url.searchParams.set('period2', String(Math.floor(end.getTime()/1000)));
-      url.searchParams.set('includePrePost', 'false');
-    }
+    url.searchParams.set('symbol', symbol);
+    url.searchParams.set('interval', interval);
+    url.searchParams.set('period1', String(Math.floor(start.getTime()/1000)));
+    url.searchParams.set('period2', String(Math.floor(end.getTime()/1000)));
+    url.searchParams.set('includePrePost', 'false');
     const r = await fetch(url.toString(), { cache:'no-store' });
     if (!r.ok) throw new Error(await r.text());
     return await r.json();
@@ -145,16 +158,29 @@
         const esClean = pairs.map(p=>p.es);
         const vixClean = pairs.map(p=>p.v);
 
+        // Shift timestamps so axis displays ET regardless of user's local timezone
+        const localOffsetEast = -new Date().getTimezoneOffset();
+        const etEast = etOffsetParts(dateISO).minutesEast; // negative for -04:00
+        const deltaMin = localOffsetEast - etEast; // add delta to display ET clock locally
+        const tsDisplay = tsClean.map(d => new Date(+d + deltaMin*60000));
+
         // CSV rows
         const fmt = (d)=>{
           const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), da=String(d.getDate()).padStart(2,'0');
           const hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0');
           return `${y}-${m}-${da} ${hh}:${mm}`;
         };
+        // ET timestamp formatting for CSV rows
+        function fmtET(dUtc){
+          const parts = new Intl.DateTimeFormat('en-US', { timeZone:'America/New_York',
+            year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hour12:false
+          }).formatToParts(dUtc).reduce((a,p)=>{ a[p.type]=p.value; return a; }, {});
+          return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+        }
         const rows = [[ 'timestamp_et','es_close','vix_close' ]];
-        for (let i=0;i<tsClean.length;i++) rows.push([ fmt(tsClean[i]), esClean[i], vixClean[i] ]);
+        for (let i=0;i<tsClean.length;i++) rows.push([ fmtET(tsClean[i]), esClean[i], vixClean[i] ]);
         const fname = `${label.toLowerCase()}_vix_1min_${dateISO}_0930_1615_ET.csv`;
-        outputs.push({ label, filename: fname, rows, ts: tsClean, es: esClean, vix: vixClean });
+        outputs.push({ label, filename: fname, rows, ts: tsDisplay, es: esClean, vix: vixClean });
       }
 
       // Results links + charts
