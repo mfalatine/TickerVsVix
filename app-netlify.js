@@ -9,6 +9,7 @@
   const resultsEl = document.getElementById('results');
   const saveAllBtn = document.getElementById('saveAllBtn');
   const archiveBtn = document.getElementById('archiveBtn');
+  const ahkBtn = document.getElementById('ahkBtn');
   const msgEl = document.getElementById('msg');
   const chartsEl = document.getElementById('charts');
   const allBox = document.getElementById('all');
@@ -249,6 +250,15 @@
     } catch(err){ msgEl.textContent = 'Failed: ' + err; }
   }
   genBtn.addEventListener('click', generate);
+
+  // AHK launcher: navigates to custom protocol that AutoHotkey can register and handle
+  ahkBtn.addEventListener('click', function(){
+    try {
+      const yymmdd = (dateEl.value || todayISO()).replaceAll('-','').slice(2);
+      const url = `stratagem571-archive://run?date=${yymmdd}`;
+      window.location.href = url;
+    } catch(e){ msgEl.textContent = 'AHK launch failed: ' + e; }
+  });
 
   // Single-tab handoff (cannot close other tab, but can disable it)
   try {
