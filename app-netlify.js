@@ -139,7 +139,7 @@
     const outputs = [];
     try{
       for (const label of labels){
-        const yfSym = { ES:'ES=F', MES:'MES=F', NQ:'NQ=F', MNQ:'MNQ=F' }[label] || 'ES=F';
+        const yfSym = { ES:'ES=F', MES:'MES=F', NQ:'NQ=F', MNQ:'MNQ=F', YM:'YM=F', RTY:'RTY=F' }[label] || 'ES=F';
         const dataFut = await fetchYahoo(yfSym, dateISO);
         const dataVix = await fetchYahoo('^VIX', dateISO);
         const ts = (dataFut.chart.result[0].timestamp || []).map(s=>new Date(s*1000));
