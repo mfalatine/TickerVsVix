@@ -4,8 +4,14 @@
 # Optional: powershell.exe -ExecutionPolicy Bypass -File "...\ArchiveDaily.ps1" -Date 2025-08-20
 
 param(
-  [string]$Date
+  [string]$SiteBase = $null,
+  [string]$Date = $null
 )
+if (-not $SiteBase) {
+  $cfg = 'C:\ProgramData\Stratagem571\netlify.app.location.txt'
+  if (Test-Path $cfg) { $SiteBase = (Get-Content $cfg -First 1).Trim() }
+  if (-not $SiteBase) { $SiteBase = 'https://tickervsvix.netlify.app' }
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
