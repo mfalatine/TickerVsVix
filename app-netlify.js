@@ -14,7 +14,18 @@
   const allBox = document.getElementById('all');
 
   function todayISO(){ const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); }
-  function setDefaultDate(){ dateEl.value = todayISO(); }
+  function dateISOForETInstant(d){
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone:'America/New_York', year:'numeric', month:'2-digit', day:'2-digit' })
+      .formatToParts(d).reduce((a,p)=>{ a[p.type]=p.value; return a; }, {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+  function setDefaultDate(){
+    const p = nowETParts();
+    const minutesET = (parseInt(p.hour,10) * 60) + parseInt(p.minute,10);
+    const now = new Date();
+    const target = minutesET >= (16*60 + 15) ? now : new Date(now.getTime() - 24*60*60*1000);
+    dateEl.value = dateISOForETInstant(target);
+  }
   setDefaultDate();
 
   function nowETParts(){
