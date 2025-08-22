@@ -8,6 +8,7 @@
   const genBtn = document.getElementById('genBtn');
   const resultsEl = document.getElementById('results');
   const saveAllBtn = document.getElementById('saveAllBtn');
+  const archiveBtn = document.getElementById('archiveBtn');
   const msgEl = document.getElementById('msg');
   const chartsEl = document.getElementById('charts');
   const allBox = document.getElementById('all');
@@ -217,6 +218,22 @@
       saveAllBtn.disabled = csvPayloads.length === 0;
       saveAllBtn.onclick = function(){
         csvPayloads.forEach(p => { const csv = buildCsv(p.rows); downloadCsv(csv, p.filename); });
+      };
+      archiveBtn.disabled = csvPayloads.length === 0;
+      archiveBtn.onclick = async function(){
+        try {
+          // Pick the existing VixLogs directory. Only create the final YYMMDD subfolder.
+          const vixLogsHandle = await window.showDirectoryPicker({ id:'vixlogs-root' });
+          const yymmdd = (dateEl.value || todayISO()).replaceAll('-','').slice(2);
+          const targetHandle = await vixLogsHandle.getDirectoryHandle(yymmdd, { create:true });
+          for (const p of csvPayloads){
+            const fileHandle = await targetHandle.getFileHandle(p.filename, { create:true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(buildCsv(p.rows));
+            await writable.close();
+          }
+          msgEl.textContent = `Archived ${csvPayloads.length} files to ${yymmdd}`;
+        } catch(err){ msgEl.textContent = 'Archive failed: ' + err; }
       };
     } catch(err){ msgEl.textContent = 'Failed: ' + err; }
   }
